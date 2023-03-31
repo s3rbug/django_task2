@@ -110,7 +110,8 @@ class DatabaseMySQL:
             for field_widget in new_field_widgets
         ]
 
-        new_field_items = [item if item.lower() != "false" else False for item in new_field_items]
+        new_field_items = [item if not item.lower() == "false" else False for item in new_field_items]
+        new_field_items = [item if not item or not item.lower() == "none" else None for item in new_field_items]
 
         values = dict(zip(self.column_names, new_field_items))
 
@@ -132,8 +133,11 @@ class DatabaseMySQL:
         field_id = self.fields[row].get("id")
         try:
             value = item.text() if not item.text().lower() == "false" else False
+            value = value if not value or not item.text().lower() == "none" else None
             query = InternetStoreMySQL.update(**{field: value}).where(InternetStoreMySQL.id == field_id)
             query.execute()
-            self.update_table_widget()
+            self.logger.log(f"Updated MySQL cell {field} with id {field_id}. New value is {value}")
         except Exception as error:
             self.logger.error_message_box(f"MySQL error trying to update table item! {error}")
+
+        self.update_table_widget()

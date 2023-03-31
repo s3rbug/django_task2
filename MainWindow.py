@@ -3,10 +3,7 @@ from PyQt5 import QtWidgets, uic
 from DatabaseMySQL import DatabaseMySQL
 from DatabasePostgreSQL import DatabasePostgreSQL
 from DatabaseSQLite import DatabaseSQLite
-from config import MYSQL, POSTGRESQL, SQLITE
 from Logger import Logger
-
-from peewee import *
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -21,24 +18,19 @@ class MainWindow(QtWidgets.QMainWindow):
             table_widget=self.mysql_table,
             logger=self.logger
         )
-        # self.dbPostgreSQL = DatabasePostgreSQL(
-        #     host=POSTGRESQL["host"],
-        #     user=POSTGRESQL["user"],
-        #     password=POSTGRESQL["password"],
-        #     database=POSTGRESQL["database"],
-        #     table_widget=self.postgresql_table,
-        #     logger=self.logger
-        # )
-        # self.dbSQLite = DatabaseSQLite(
-        #     filename=SQLITE["filename"],
-        #     table_widget=self.sqlite_table,
-        #     logger=self.logger
-        # )
-        # #   З'єднання кнопок з UI та відповідних функцій
-        # self.export_to_postgres_button.clicked.connect(
-        #     self.dbPostgreSQL.migrate_from_mysql(self.dbMySql)
-        # )
-        # self.export_fields_button.clicked.connect(
-        #     self.dbPostgreSQL.export_to_sqlite(self.export_fields_lineedit, self.dbSQLite)
-        # )
+        self.dbPostgreSQL = DatabasePostgreSQL(
+            table_widget=self.postgresql_table,
+            logger=self.logger
+        )
+        self.dbSQLite = DatabaseSQLite(
+            table_widget=self.sqlite_table,
+            logger=self.logger
+        )
+        #   З'єднання кнопок з UI та відповідних функцій
+        self.export_to_postgres_button.clicked.connect(
+            self.dbPostgreSQL.migrate_from_mysql(self.dbMySql)
+        )
+        self.export_fields_button.clicked.connect(
+            self.dbPostgreSQL.export_to_sqlite(self.export_fields_lineedit, self.dbSQLite)
+        )
         self.show()
