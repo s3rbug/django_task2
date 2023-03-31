@@ -11,7 +11,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__()
         #   Завантаження файлу інтерфейсу
         uic.loadUi('MainWindowForm.ui', self)
-        self.setWindowTitle("Лабораторна робота №1")
+        self.setWindowTitle("Лабораторна робота №2")
         self.logger = Logger(self.label_log)
         #   Створення баз даних
         self.dbMySql = DatabaseMySQL(
