@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
 from PyQt5.QtCore import Qt
+from peewee import *
 
 from DatabasePostgreSQL import DatabasePostgreSQL
 from Logger import Logger
 from models import sqlite_database, create_sqlite_model
-from peewee import *
 
 
 class DatabaseSQLite:
@@ -21,6 +21,11 @@ class DatabaseSQLite:
         #   З'єднання з базою даних
         self.connect()
 
+    def __del__(self):
+        """Закриття з'єднання"""
+        self.cursor.close()
+        self.db.close()
+
     def connect(self):
         """З'єднання з базою SQLite"""
         try:
@@ -28,7 +33,7 @@ class DatabaseSQLite:
             self.cursor = self.db.cursor()
             self.logger.log(f"Successful connection to SQLite database")
         except Exception as error:
-            self.logger.error_message_box(f"Error connecting to SQLite database! {error}")
+            self.logger.error_message_box(f"Error connecting to SQLite database! {error}", should_abort=True)
 
     def init_table_widget_axis(self):
         """Ініціалізація назв комірок у таблиці"""
@@ -44,7 +49,7 @@ class DatabaseSQLite:
             self.tableWidget.setVerticalHeaderLabels("" for _ in self.fields)
 
         except Exception as error:
-            self.logger.error_message_box(f"SQLite error connecting table! {error}")
+            self.logger.error_message_box(f"SQLite error! {error}")
 
     def init_table_widget_fields(self):
         """Заповнення таблиці значеннями"""
@@ -62,11 +67,10 @@ class DatabaseSQLite:
             self.init_table_widget_fields()
             self.editable = True
         except Exception as error:
-            self.logger.error_message_box(f"PostgreSQL error trying to update table! {error}")
+            self.logger.error_message_box(f"SQLite error trying to update table widget! {error}")
 
     def migrate_from_postgresql(self, db_postgresql: DatabasePostgreSQL, export_fields: [str]):
         """Міграція з PostgreSQL"""
-
         self.InternetStoreSQLite = create_sqlite_model(export_fields)
         try:
             #   Очищення таблиці перед міграцією
@@ -74,14 +78,9 @@ class DatabaseSQLite:
             #   Створення порожньої таблиці з необхідними полями
             self.db.create_tables([self.InternetStoreSQLite])
 
-            fields = []
-
-            for field in db_postgresql.fields:
-                custom_field = field.copy()
-                for key, value in field.items():
-                    if key not in export_fields:
-                        custom_field.pop(key)
-                fields.append(custom_field)
+            fields = [
+                {key: field[key] for key in export_fields if key in field} for field in db_postgresql.fields
+            ]
 
             for field in fields:
                 self.InternetStoreSQLite.create(**field)

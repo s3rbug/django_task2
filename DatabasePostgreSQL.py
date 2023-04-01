@@ -1,10 +1,12 @@
 import re
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QLineEdit
+from PyQt5.QtCore import Qt
+from peewee import *
+
 from Logger import Logger
 from DatabaseMySQL import DatabaseMySQL
-from PyQt5.QtCore import Qt
 from models import postgresql_database, InternetStorePostgreSQL
-from peewee import *
+from utils import connector_decorator
 
 
 class DatabasePostgreSQL:
@@ -22,6 +24,11 @@ class DatabasePostgreSQL:
         #   Обробка зміни комірки в таблиці
         self.tableWidget.itemChanged.connect(self.update_field)
 
+    def __del__(self):
+        """Закриття з'єднання"""
+        self.cursor.close()
+        self.db.close()
+
     def connect(self):
         """З'єднання з базою PostgreSQL"""
         try:
@@ -30,7 +37,10 @@ class DatabasePostgreSQL:
             InternetStorePostgreSQL.create_table()
             self.logger.log(f"Successful connection to PostgreSQL database")
         except Exception as error:
-            self.logger.error_message_box(f"Error trying to connect to PostgreSQL! {error}", should_abort=True)
+            self.logger.error_message_box(
+                f"Error trying to connect to PostgreSQL! {error}",
+                should_abort=True
+            )
 
     def init_table_widget_axis(self):
         """Ініціалізація назв комірок у таблиці"""
@@ -62,25 +72,25 @@ class DatabasePostgreSQL:
             self.init_table_widget_fields()
             self.editable = True
         except Exception as error:
-            self.logger.error_message_box(f"PostgreSQL error trying to update table! {error}")
+            self.logger.error_message_box(f"PostgreSQL error trying to update table widget! {error}")
 
+    @connector_decorator
     def migrate_from_mysql(self, mysql_db: DatabaseMySQL):
         """Міграція з MySQL"""
-
-        def wrap_foo():
-            try:
-                #   Очистити таблицю перед міграцією
-                self.db.drop_tables([InternetStorePostgreSQL])
-                #   Створення порожньої таблиці
-                self.db.create_tables([InternetStorePostgreSQL])
-                for field in mysql_db.fields:
-                    InternetStorePostgreSQL.create(**field)
-                self.update_table_widget()
-                self.logger.log("Successfully exported MySQL table data to PostgreSQL")
-            except Exception as error:
-                self.logger.error_message_box(f"Error trying to export to PostgreSQL! {error}", should_abort=True)
-
-        return wrap_foo
+        try:
+            #   Очистити таблицю перед міграцією
+            self.db.drop_tables([InternetStorePostgreSQL])
+            #   Створення порожньої таблиці
+            self.db.create_tables([InternetStorePostgreSQL])
+            for field in mysql_db.fields:
+                InternetStorePostgreSQL.create(**field)
+            self.update_table_widget()
+            self.logger.log("Successfully migrated MySQL table data to PostgreSQL")
+        except Exception as error:
+            self.logger.error_message_box(
+                f"Error trying to export to PostgreSQL! {error}",
+                should_abort=True
+            )
 
     def update_field(self, item: QTableWidgetItem):
         """Оновлення значення в БД"""
@@ -92,23 +102,23 @@ class DatabasePostgreSQL:
         try:
             value = False if item.text().lower() == "false" else item.text()
             value = value if not value or not item.text().lower() == "none" else None
-            query = InternetStorePostgreSQL.update(**{field: value}).where(InternetStorePostgreSQL.id == field_id)
+            query = InternetStorePostgreSQL \
+                .update(**{field: value}) \
+                .where(InternetStorePostgreSQL.id == field_id)
             query.execute()
             self.logger.log(f"Updated PostgreSQL cell {field} with id {field_id}. New value is {value}")
         except Exception as error:
             self.logger.error_message_box(f"PostgreSQL error trying to update table item! {error}")
         self.update_table_widget()
 
+    @connector_decorator
     def export_to_sqlite(self, export_fields_lineedit: QLineEdit, db_sqlite):
         """Експорт в SQLite"""
-        def wrap_foo():
-            export_fields_text = export_fields_lineedit.text()
-            export_fields = re.split(",\\s*|\\s+", export_fields_text)
-            for export_field in export_fields:
-                if export_field not in self.column_names:
-                    self.logger.error_message_box(f"{export_field} is not a valid field name.\n"
-                                                  f"Valid field names are: {self.column_names}")
-                    return
-            db_sqlite.migrate_from_postgresql(self, export_fields)
-
-        return wrap_foo
+        export_fields_text = export_fields_lineedit.text()
+        export_fields = re.split(",\\s*|\\s+", export_fields_text)
+        for export_field in export_fields:
+            if export_field not in self.column_names:
+                self.logger.error_message_box(f"{export_field} is not a valid field name.\n"
+                                              f"Valid field names are: {self.column_names}")
+                return
+        db_sqlite.migrate_from_postgresql(self, export_fields)

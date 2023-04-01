@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QPushButton
 from PyQt5.QtCore import Qt
+from peewee import *
 
 from Logger import Logger
-
-from peewee import *
 from models import my_sql_database, InternetStoreMySQL
+from utils import connector_decorator
 
 
 class DatabaseMySQL:
@@ -88,17 +88,14 @@ class DatabaseMySQL:
         except Exception as error:
             self.logger.error_message_box(f"MySQL error trying to update table! {error}")
 
+    @connector_decorator
     def delete_field(self, field_id):
         """Видалення значення по id"""
-
-        def wrap_foo():
-            try:
-                InternetStoreMySQL.delete_instance(InternetStoreMySQL.get(InternetStoreMySQL.id == field_id))
-                self.update_table_widget()
-            except Exception as error:
-                self.logger.error_message_box(f"MySQL error trying to delete table item! {error}")
-
-        return wrap_foo
+        try:
+            InternetStoreMySQL.delete_instance(InternetStoreMySQL.get(InternetStoreMySQL.id == field_id))
+            self.update_table_widget()
+        except Exception as error:
+            self.logger.error_message_box(f"MySQL error trying to delete table item! {error}")
 
     def create_field(self):
         """Створення нового елемента в БД"""

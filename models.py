@@ -21,7 +21,13 @@ postgresql_database = PostgresqlDatabase(
 sqlite_database = SqliteDatabase(SQLITE["filename"])
 
 
-class InternetStore(Model):
+class ImprovedModel(Model):
+    @classmethod
+    def get_field_names(cls):
+        return [field_item.name for field_item in cls._meta.sorted_fields]
+
+
+class InternetStore(ImprovedModel):
     id = AutoField()
     price = IntegerField()
     count = IntegerField()
@@ -30,10 +36,6 @@ class InternetStore(Model):
     program_description = TextField()
     license_expire_year = IntegerField(null=True)
     is_unlimited_license = BooleanField()
-
-    @classmethod
-    def get_field_names(cls):
-        return [field.name for field in cls._meta.sorted_fields]
 
 
 class InternetStoreMySQL(InternetStore):
@@ -49,17 +51,13 @@ class InternetStorePostgreSQL(InternetStore):
 
 
 def create_sqlite_model(fields: [str]):
-    class InternetStoreSQLite(Model):
-        @classmethod
-        def get_field_names(cls):
-            return [f.name for f in cls._meta.sorted_fields]
-
+    class InternetStoreSQLite(ImprovedModel):
         class Meta:
             database = sqlite_database
             table_name = TABLE_NAME
 
     for field_name in fields:
         field = getattr(InternetStore, field_name)
-        InternetStoreSQLite._meta.add_field(field_name, field)
+        getattr(InternetStoreSQLite, '_meta').add_field(field_name, field)
 
     return InternetStoreSQLite
